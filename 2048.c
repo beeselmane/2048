@@ -254,144 +254,67 @@ int do_move(struct game *state, enum move move)
     {
         for (int j = 0; j < (BOARD_SIZE - 1); j++)
         {
-            //int flip = (move == MOVE_DOWN || move == MOVE_RIGHT) ? BOARD_SIZE : 0;
+            // We want a 'plain' pointer here, since we need to flip indicies in some cases.
+            uint32_t *board = (uint32_t *)state->board;
 
-            //uint32_t val = ((uint32_t [4]){
-            //    /* left  */ state->board[i][j],
-            //    /* right */ state->board[i][flip - j],
-            //    /* down  */ state->board[BOARD_SIZE - j][i],
-            //    /* up    */ state->board[j][i]
-            //})[move];
+            // Moving down and right will need to access the board in the opposite direction.
+            int flip = (move == MOVE_DOWN || move == MOVE_RIGHT) ? 1 : 0;
+            int mod = (flip ? ((BOARD_SIZE - 1) - j) : j); // Modified inner index
 
-            // We need a third loop here. On each block (i, j) we examine until the end of the row (col) to see if anything can be moved.
-            if (move == MOVE_UP) {
-                uint32_t val = state->board[j][i];
+            // Based on the move being made, we either move horizontally or vertically through the board.
+            int dir = (move == MOVE_UP || move == MOVE_DOWN) ? 1 : 0;
 
-                for (int k = j + 1; k < BOARD_SIZE; k++)
+            // Compute the tile we're operating on as follows:
+            // MOVE_UP:    board[j    ][i    ]
+            // MOVE_DOWN:  board[N - j][i    ]
+            // MOVE_LEFT:  board[i    ][j    ]
+            // MOVE_RIGHT: board[i    ][N - j]
+            uint32_t idx = ((BOARD_SIZE * (dir ? mod : i)) + (dir ? i : mod));
+            uint32_t val = board[idx];
+
+            // We're going to loop (u/d/l/r) over tiles from the initial one.
+            int k = mod + (flip ? (-1) : (+1));
+
+            while (true)
+            {
+                if (flip ? (k < 0) : (k >= BOARD_SIZE))
                 {
-                    uint32_t next = state->board[k][i];
+                    // Always stop when we reach the edge of the board.
+                    break;
+                }
 
-                    if (next)
-                    {
-                        if (val && (next == val)) {
-                            // Match. Double.
-                            state->board[j][i] <<= 1;
-                            state->board[k][i] = 0;
-                            state->slots++;
+                // Similar to picking `idx`, start at the next index in the proper direction.
+                uint32_t nidx = (BOARD_SIZE * (dir ? k : i)) + (dir ? i : k);
+                uint32_t next = board[nidx];
 
-                            changed = true;
-                        } else if (!val) {
-                            // Nothing is here currently, move.
-                            state->board[j][i] = next;
-                            state->board[k][i] = 0;
+                if (next)
+                {
+                    if (val && (next == val)) {
+                        // Matched value. Double.
+                        board[idx] <<= 1;
+                        board[nidx] = 0;
 
-                            changed = true;
+                        changed = true;
+                        state->slots++;
 
-                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
-                            val = next;
-                            continue;
-                        } /* else we can't move anything. */
+                        break;
+                    } else if (!val) {
+                        // Nothing is currently, here, move.
+                        board[idx] = next;
+                        board[nidx] = 0;
 
+                        // We need to try again since merges can happen 'accross' empty tile moves.
+                        changed = true;
+                        val = next;
+                        continue;
+                    } else {
+                        // We hit a thing we can't change.
                         break;
                     }
                 }
-            } else if (move == MOVE_LEFT) {
-                uint32_t val = state->board[i][j];
 
-                for (int k = j + 1; k < BOARD_SIZE; k++)
-                {
-                    uint32_t next = state->board[i][k];
-
-                    if (next)
-                    {
-                        if (val && (next == val)) {
-                            // Match. Double.
-                            state->board[i][j] <<= 1;
-                            state->board[i][k] = 0;
-                            state->slots++;
-
-                            changed = true;
-                        } else if (!val) {
-                            // Nothing is here currently, move.
-                            state->board[i][j] = next;
-                            state->board[i][k] = 0;
-
-                            changed = true;
-
-                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
-                            val = next;
-                            continue;
-                        } /* else we can't move anything. */
-
-                        break;
-                    }
-                }
-            } else if (move == MOVE_DOWN) {
-                int row = (BOARD_SIZE - 1) - j;
-
-                uint32_t val = state->board[row][i];
-
-                for (int k = row - 1; k >= 0; k--)
-                {
-                    uint32_t next = state->board[k][i];
-
-                    if (next)
-                    {
-                        if (val && (next == val)) {
-                            // Match. Double.
-                            state->board[row][i] <<= 1;
-                            state->board[k][i] = 0;
-                            state->slots++;
-
-                            changed = true;
-                        } else if (!val) {
-                            // Nothing is here currently, move.
-                            state->board[row][i] = next;
-                            state->board[k][i] = 0;
-
-                            changed = true;
-
-                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
-                            val = next;
-                            continue;
-                        } /* else we can't move anything. */
-
-                        break;
-                    }
-                }
-            } else if (move == MOVE_RIGHT) {
-                int col = (BOARD_SIZE - 1) - j;
-
-                uint32_t val = state->board[i][col];
-
-                for (int k = col - 1; k >= 0; k--)
-                {
-                    uint32_t next = state->board[i][k];
-
-                    if (next)
-                    {
-                        if (val && (next == val)) {
-                            // Match. Double.
-                            state->board[i][col] <<= 1;
-                            state->board[i][k] = 0;
-                            state->slots++;
-
-                            changed = true;
-                        } else if (!val) {
-                            // Nothing is here currently, move.
-                            state->board[i][col] = next;
-                            state->board[i][k] = 0;
-
-                            changed = true;
-
-                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
-                            val = next;
-                            continue;
-                        } /* else we can't move anything. */
-
-                        break;
-                    }
-                }
+                // Move in the right direction.
+                k += (flip ? (-1) : (+1));
             }
         }
     }
