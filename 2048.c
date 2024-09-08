@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 // Add debug messaged to log
-#define DEBUG_LOG       1
+#define DEBUG_LOG       0
 
 // Dimension of game board
 #define BOARD_SIZE      4
@@ -235,7 +235,11 @@ void spawn_tile(struct game *state)
     }
 
     // Log randomness for replication.
-    if (state->log) { fprintf(state->log, "%u/%u\n", state->rand, state->slots); }
+    if (state->log)
+    {
+        fprintf(state->log, "%u,%u\n", state->slots, state->rand);
+        fflush(state->log);
+    }
 }
 
 // Do a single "move" on the game board.
@@ -362,7 +366,11 @@ int main(int argc, const char *const *argv)
         // Accept characters in any case.
         c = c | 0x20;
 
-        fprintf(game_state.log, "read '%c', move '%d' (%c)\n", c, MOVE_MAP[c], IS_MOVE(c) ? 'y' : 'n');
+        if (DEBUG_LOG)
+        {
+            fprintf(game_state.log, "read '%c', move '%d' (%c)\n", c, MOVE_MAP[c], IS_MOVE(c) ? 'y' : 'n');
+            fflush(game_state.log);
+        }
 
         // Only take action if c is a valid move.
         if (IS_MOVE(c))
