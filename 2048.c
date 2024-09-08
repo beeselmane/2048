@@ -286,6 +286,10 @@ int do_move(struct game *state, enum move move)
                             state->board[k][i] = 0;
 
                             changed = true;
+
+                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
+                            val = next;
+                            continue;
                         } /* else we can't move anything. */
 
                         break;
@@ -313,6 +317,10 @@ int do_move(struct game *state, enum move move)
                             state->board[i][k] = 0;
 
                             changed = true;
+
+                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
+                            val = next;
+                            continue;
                         } /* else we can't move anything. */
 
                         break;
@@ -342,6 +350,10 @@ int do_move(struct game *state, enum move move)
                             state->board[k][i] = 0;
 
                             changed = true;
+
+                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
+                            val = next;
+                            continue;
                         } /* else we can't move anything. */
 
                         break;
@@ -371,6 +383,10 @@ int do_move(struct game *state, enum move move)
                             state->board[i][k] = 0;
 
                             changed = true;
+
+                            // In this case, we actually need to retry, since merges can occur on non-empty tiles.
+                            val = next;
+                            continue;
                         } /* else we can't move anything. */
 
                         break;
